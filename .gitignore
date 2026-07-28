@@ -1,0 +1,17 @@
+# Android / Gradle
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+.idea/
+*.iml
+local.properties
+.DS_Store
+
+# Node.js Backend
+backend/node_modules/
+backend/downloads/*
+!backend/downloads/.gitkeep
+backend/npm-debug.log*
+.env

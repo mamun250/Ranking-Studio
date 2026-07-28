@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  ranking-api:
+    build: .
+    container_name: ranking-studio-api
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+    volumes:
+      - ./downloads:/app/downloads
+    restart: always
