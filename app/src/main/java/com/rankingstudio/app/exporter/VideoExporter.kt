@@ -4,7 +4,7 @@ import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.rankingstudio.app.domain.model.RankingProject
-import kotlinx.coroutines.dispatchers.Dispatchers
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
