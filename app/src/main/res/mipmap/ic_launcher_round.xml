@@ -1,0 +1,45 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Circular Background (SurfacePaper) -->
+    <path
+        android:fillColor="#FCF9F0"
+        android:pathData="M54,54m-48,0a48,48 0,1 1,96 0a48,48 0,1 1,-96 0"/>
+
+    <!-- Base Line (InkCharcoal) -->
+    <path
+        android:fillColor="#2B2B2A"
+        android:pathData="M26,74 h56 v4 h-56 z"/>
+
+    <!-- 2nd Place Bar (SecondaryOliveGreen) -->
+    <path
+        android:fillColor="#50652A"
+        android:pathData="M30,50 h12 v24 h-12 z"/>
+
+    <!-- 1st Place Bar (PrimarySandishBrown) -->
+    <path
+        android:fillColor="#663828"
+        android:pathData="M48,40 h12 v34 h-12 z"/>
+
+    <!-- 3rd Place Bar (OutlineBrown) -->
+    <path
+        android:fillColor="#84736E"
+        android:pathData="M66,56 h12 v18 h-12 z"/>
+
+    <!-- 1st Place Crown Highlight (Terracotta) -->
+    <path
+        android:fillColor="#C15C3D"
+        android:pathData="M54,24 l6,6 l-6,6 l-6,-6 z"/>
+
+    <!-- 2nd Place Dot (SecondaryOliveGreen) -->
+    <path
+        android:fillColor="#50652A"
+        android:pathData="M36,41 l4,4 l-4,4 l-4,-4 z"/>
+
+    <!-- 3rd Place Dot (OutlineBrown) -->
+    <path
+        android:fillColor="#84736E"
+        android:pathData="M72,47 l4,4 l-4,4 l-4,-4 z"/>
+</vector>
