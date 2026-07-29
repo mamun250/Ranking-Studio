@@ -116,6 +116,22 @@ class RankingEditorViewModel @Inject constructor(
         }
     }
 
+    fun updateClipTrim(clipId: String, startMs: Long, endMs: Long) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updatedClips = current.clips.map { clip ->
+            if (clip.id == clipId) {
+                clip.copy(
+                    trimStartMs = startMs.coerceIn(0L, clip.durationMs),
+                    trimEndMs = endMs.coerceIn(startMs + 500L, clip.durationMs)
+                )
+            } else clip
+        }
+        val updatedProject = current.copy(clips = updatedClips, updatedAt = System.currentTimeMillis())
+        _project.value = updatedProject
+        saveCurrentProject()
+    }
+
     fun updateHeaderConfig(config: HeaderConfig) {
         val current = _project.value ?: return
         pushUndoState(current)
@@ -129,6 +145,30 @@ class RankingEditorViewModel @Inject constructor(
         pushUndoState(current)
         val updatedItems = current.rankingItems.map {
             if (it.rankIndex == rankIndex) it.copy(title = newTitle, emoji = newEmoji) else it
+        }
+        val updated = current.copy(rankingItems = updatedItems, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun updateRankingSidebarItemFull(
+        rankIndex: Int,
+        newTitle: String,
+        newEmoji: String,
+        fontColorHex: String,
+        backgroundColorHex: String
+    ) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updatedItems = current.rankingItems.map { item ->
+            if (item.rankIndex == rankIndex) {
+                item.copy(
+                    title = newTitle,
+                    emoji = newEmoji,
+                    fontColorHex = fontColorHex,
+                    backgroundColorHex = backgroundColorHex
+                )
+            } else item
         }
         val updated = current.copy(rankingItems = updatedItems, updatedAt = System.currentTimeMillis())
         _project.value = updated

@@ -1,11 +1,14 @@
 package com.rankingstudio.app.ui.screens.importdialog
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.rankingstudio.app.data.remote.ImportRequest
 import com.rankingstudio.app.data.remote.TikTokApiService
+import com.rankingstudio.app.data.remote.TikTokDirectResolver
 import com.rankingstudio.app.ui.components.PapercraftButton
 import com.rankingstudio.app.ui.components.PapercraftCard
 import com.rankingstudio.app.ui.theme.InkCharcoal
@@ -29,7 +33,10 @@ fun TikTokImportDialog(
     onVideoDownloaded: (String) -> Unit
 ) {
     var urlText by remember { mutableStateOf("") }
+    var customServerUrl by remember { mutableStateOf("") }
+    var showServerSettings by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("Processing TikTok URL...") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -61,8 +68,8 @@ fun TikTokImportDialog(
             OutlinedTextField(
                 value = urlText,
                 onValueChange = { urlText = it },
-                label = { Text("Paste TikTok URL") },
-                placeholder = { Text("https://www.tiktok.com/@...") },
+                label = { Text("Paste TikTok Video URL") },
+                placeholder = { Text("https://www.tiktok.com/@user/video/...") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -70,6 +77,46 @@ fun TikTokImportDialog(
                     unfocusedBorderColor = Color.Gray
                 )
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showServerSettings = !showServerSettings }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.Gray
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (showServerSettings) "Hide Custom Server Setting" else "Optional: Custom Server Host",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+            }
+
+            AnimatedVisibility(visible = showServerSettings) {
+                Column(modifier = Modifier.padding(top = 4.dp)) {
+                    OutlinedTextField(
+                        value = customServerUrl,
+                        onValueChange = { customServerUrl = it },
+                        label = { Text("Server URL (e.g. http://192.168.1.50:3000)") },
+                        placeholder = { Text("Leave blank to use direct download") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Terracotta,
+                            unfocusedBorderColor = Color.LightGray
+                        )
+                    )
+                }
+            }
 
             if (errorMessage != null) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -92,7 +139,7 @@ fun TikTokImportDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Downloading video from backend API...",
+                        text = statusMessage,
                         style = MaterialTheme.typography.labelMedium,
                         color = InkCharcoal
                     )
@@ -112,26 +159,56 @@ fun TikTokImportDialog(
                 Spacer(modifier = Modifier.width(8.dp))
                 PapercraftButton(
                     onClick = {
-                        if (urlText.isBlank()) {
-                            errorMessage = "Please enter a valid TikTok URL."
+                        val inputUrl = urlText.trim()
+                        if (inputUrl.isBlank() || !inputUrl.contains("tiktok.com")) {
+                            errorMessage = "Please enter a valid TikTok video URL."
                             return@PapercraftButton
                         }
                         isLoading = true
                         errorMessage = null
+                        statusMessage = "Resolving video download link..."
+
                         scope.launch {
                             try {
-                                val response = apiService.importTikTokVideo(ImportRequest(urlText.trim()))
+                                var resolvedUrl: String? = null
+
+                                // 1. If user entered a custom backend URL, try that first
+                                if (customServerUrl.isNotBlank()) {
+                                    statusMessage = "Connecting to custom server..."
+                                    val result = TikTokDirectResolver.resolveViaCustomBackend(customServerUrl.trim(), inputUrl)
+                                    if (result.isSuccess) {
+                                        resolvedUrl = result.getOrNull()
+                                    }
+                                }
+
+                                // 2. Try direct TikWM public API scraper
+                                if (resolvedUrl.isNullOrBlank()) {
+                                    statusMessage = "Fetching direct HD video (No Watermark)..."
+                                    val tikwmResult = TikTokDirectResolver.resolveViaTikWM(inputUrl)
+                                    if (tikwmResult.isSuccess) {
+                                        resolvedUrl = tikwmResult.getOrNull()
+                                    }
+                                }
+
+                                // 3. Fallback to default Retrofit backend service if available
+                                if (resolvedUrl.isNullOrBlank()) {
+                                    statusMessage = "Trying local backend API fallback..."
+                                    val response = apiService.importTikTokVideo(ImportRequest(inputUrl))
+                                    if (response.isSuccessful && response.body()?.success == true) {
+                                        resolvedUrl = response.body()?.video
+                                    }
+                                }
+
                                 isLoading = false
-                                if (response.isSuccessful && response.body()?.success == true) {
-                                    val videoUrl = response.body()?.video ?: ""
-                                    onVideoDownloaded(videoUrl)
+                                if (!resolvedUrl.isNullOrBlank()) {
+                                    onVideoDownloaded(resolvedUrl)
                                     onDismiss()
                                 } else {
-                                    errorMessage = response.body()?.message ?: "Failed to download video."
+                                    errorMessage = "Could not download TikTok video. Check URL or internet connection."
                                 }
                             } catch (e: Exception) {
                                 isLoading = false
-                                errorMessage = e.localizedMessage ?: "Error connecting to TikTok API server."
+                                errorMessage = e.localizedMessage ?: "Error importing video."
                             }
                         }
                     },
@@ -144,9 +221,10 @@ fun TikTokImportDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Import to Timeline")
+                    Text("Import Video")
                 }
             }
         }
     }
 }
+
