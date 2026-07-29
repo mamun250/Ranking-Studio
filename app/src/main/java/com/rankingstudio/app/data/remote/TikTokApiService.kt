@@ -3,8 +3,10 @@ package com.rankingstudio.app.data.remote
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -99,10 +101,7 @@ object TikTokDirectResolver {
             val endpointUrl = "${cleanBaseUrl}import"
 
             val jsonBody = gson.toJson(ImportRequest(tiktokUrl))
-            val requestBody = okhttp3.RequestBody.create(
-                okhttp3.MediaType.parse("application/json; charset=utf-8"),
-                jsonBody
-            )
+            val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
             val request = Request.Builder()
                 .url(endpointUrl)
