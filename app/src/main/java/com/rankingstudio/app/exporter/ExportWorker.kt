@@ -16,7 +16,7 @@ class ExportWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
-    override suspend doWork(): Result {
+    override suspend fun doWork(): Result {
         val projectId = inputData.getString("PROJECT_ID") ?: return Result.failure()
         val fps = inputData.getInt("FPS", 30)
 
