@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -169,7 +170,7 @@ fun NleTimelineEngine(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Magnet,
+                            imageVector = Icons.Default.Tune,
                             contentDescription = "Toggle Snap",
                             tint = if (isSnappingEnabled) Terracotta else Color.Gray
                         )
@@ -607,7 +608,7 @@ private fun FilmstripThumbnails(
             val list = mutableListOf<Bitmap>()
             val intervalUs = (durationMs * 1000L) / frameCount.coerceAtLeast(1)
             for (i in 0 until frameCount) {
-                val timeUs = i * intervalUs
+                val timeUs = i.toLong() * intervalUs
                 val bmp = TimelineThumbnailCache.getFrameThumbnail(context, videoUri, timeUs)
                 if (bmp != null) list.add(bmp)
             }
@@ -684,7 +685,7 @@ private fun TextTrackRow(
                         )
                         .clickable { onSelectText(textItem) }
                         .padding(horizontal = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
                         text = textItem.text,

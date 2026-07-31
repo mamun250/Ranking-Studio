@@ -57,10 +57,10 @@ fun ExportScreen(
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = InkCharcoal)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmCream)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfacePaper)
             )
         },
-        containerColor = WarmCream
+        containerColor = SurfacePaper
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -126,7 +126,7 @@ fun ExportScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(
-                                    color = if (isSelected) SecondaryContainer else WarmCream,
+                                    color = if (isSelected) SecondaryContainer else SurfacePaper,
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .border(
@@ -159,7 +159,7 @@ fun ExportScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(
-                                    color = if (isSelected) SecondaryContainer else WarmCream,
+                                    color = if (isSelected) SecondaryContainer else SurfacePaper,
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .border(
@@ -192,7 +192,7 @@ fun ExportScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(
-                                    color = if (isSelected) SecondaryContainer else WarmCream,
+                                    color = if (isSelected) SecondaryContainer else SurfacePaper,
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .border(
@@ -241,7 +241,7 @@ fun ExportScreen(
                                 .fillMaxWidth()
                                 .height(10.dp),
                             color = Terracotta,
-                            trackColor = WarmCream
+                            trackColor = SurfacePaper
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -306,15 +306,17 @@ fun ExportScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             PapercraftButton(
-                                text = "▶ Open Video",
                                 onClick = { viewModel.openExportedVideo(context) },
                                 modifier = Modifier.weight(1f)
-                            )
+                            ) {
+                                Text("▶ Open Video", fontWeight = FontWeight.Bold)
+                            }
                             PapercraftButton(
-                                text = "📤 Share Video",
                                 onClick = { viewModel.shareExportedVideo(context) },
                                 modifier = Modifier.weight(1f)
-                            )
+                            ) {
+                                Text("📤 Share Video", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 } else {
@@ -325,10 +327,11 @@ fun ExportScreen(
                         }
 
                         PapercraftButton(
-                            text = "🚀 Start Frame-Accurate Export",
                             onClick = { viewModel.startExport(context, project) },
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            Text("🚀 Start Frame-Accurate Export", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
