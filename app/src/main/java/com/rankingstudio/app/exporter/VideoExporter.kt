@@ -2,14 +2,17 @@ package com.rankingstudio.app.exporter
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Environment
 import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.ReturnCode
 import com.rankingstudio.app.domain.model.RankingProject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 
 object VideoExporter {
@@ -33,47 +36,126 @@ object VideoExporter {
         }
     }
 
-    suspend fun exportProjectVideo(
+    suspend fun exportProjectVideoFrameAccurate(
         context: Context,
         project: RankingProject,
-        fps: Int = 30,
+        options: ExportOptions = ExportOptions(),
         outputFile: File,
-        onProgress: (Float) -> Unit
+        onProgress: (ExportProgress) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         if (project.clips.isEmpty()) {
             return@withContext false
         }
 
+        val startTime = System.currentTimeMillis()
+        val totalDurationMs = project.clips.sumOf { (it.trimEndMs - it.trimStartMs).coerceAtLeast(1000L) }.coerceAtLeast(1000L)
+        val totalFrames = ((totalDurationMs / 1000f) * options.frameRate.fps).toInt().coerceAtLeast(1)
+
+        // 1. Generate Frame-Accurate Overlay Images for each rank state
+        val overlayDir = File(context.cacheDir, "export_overlays_${System.currentTimeMillis()}")
+        if (!overlayDir.exists()) overlayDir.mkdirs()
+
+        val rankOverlayMap = mutableMapOf<Int, String>()
+        for (rank in 1..project.clips.size.coerceAtMost(7)) {
+            // Find timestamp corresponding to this rank clip
+            var tMs = 0L
+            for (i in 0 until (rank - 1)) {
+                tMs += (project.clips[i].trimEndMs - project.clips[i].trimStartMs).coerceAtLeast(1000L)
+            }
+            tMs += 200L // 200ms into clip
+
+            val bmp = FrameOverlayRenderer.generateOverlayBitmap(
+                context = context,
+                project = project,
+                timestampMs = tMs,
+                width = options.resolution.width,
+                height = options.resolution.height
+            )
+
+            val overlayFile = File(overlayDir, "overlay_rank_$rank.png")
+            FileOutputStream(overlayFile).use { out ->
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            rankOverlayMap[rank] = overlayFile.absolutePath
+        }
+
+        // 2. Build FFmpeg Filtergraph for video clips concat + rank-synced overlays
         val inputArguments = StringBuilder()
         val filterComplex = StringBuilder()
-        val concatFilter = StringBuilder()
+        val concatInputs = StringBuilder()
 
+        // Input 0..N-1: Source clips
         project.clips.forEachIndexed { index, clip ->
             val startSec = String.format(Locale.US, "%.3f", clip.trimStartMs / 1000f)
             val durationSec = String.format(Locale.US, "%.3f", ((clip.trimEndMs - clip.trimStartMs).coerceAtLeast(500L)) / 1000f)
+            val resW = options.resolution.width
+            val resH = options.resolution.height
 
             inputArguments.append("-ss $startSec -t $durationSec -i \"${clip.videoUri}\" ")
-            filterComplex.append("[$index:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(1080-iw)/2:(1920-ih)/2[v$index]; ")
-            concatFilter.append("[v$index][$index:a]")
+            filterComplex.append("[$index:v]scale=$resW:$resH:force_original_aspect_ratio=decrease,pad=$resW:$resH:($resW-iw)/2:($resH-ih)/2[vsc$index]; ")
+
+            // Apply rank overlay to clip segment
+            val overlayPath = rankOverlayMap[index + 1] ?: rankOverlayMap[1]
+            val overlayInputIdx = project.clips.size + index
+            inputArguments.append("-i \"$overlayPath\" ")
+
+            filterComplex.append("[vsc$index][$overlayInputIdx:v]overlay=0:0[vout$index]; ")
+            concatInputs.append("[vout$index][$index:a]")
         }
 
         val clipCount = project.clips.size
-        filterComplex.append("${concatFilter}concat=n=$clipCount:v=1:a=1[vconcat][aout]; ")
+        filterComplex.append("${concatInputs}concat=n=$clipCount:v=1:a=1[vconcat][aout]")
 
-        // Header Overlay Colors
-        val headerColor = project.headerConfig.fontColorHex.replace("#", "0x") + "FF"
+        val bitrateStr = "${options.bitrate.bitrateBps / 1000}k"
+        val command = "${inputArguments}-filter_complex \"$filterComplex\" -map \"[vconcat]\" -map \"[aout]\" -c:v libx264 -preset medium -b:v $bitrateStr -r ${options.frameRate.fps} -pix_fmt yuv420p \"${outputFile.absolutePath}\""
 
-        filterComplex.append("[vconcat]drawtext=text='${escapeFfmpegText(project.headerConfig.line1)}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=100[vhdr1]; ")
-        filterComplex.append("[vhdr1]drawtext=text='${escapeFfmpegText(project.headerConfig.line2)}':fontcolor=${headerColor}:fontsize=54:x=(w-text_w)/2:y=170[vhdr2]; ")
-        filterComplex.append("[vhdr2]drawtext=text='${escapeFfmpegText(project.headerConfig.line3)}':fontcolor=white:fontsize=44:x=(w-text_w)/2:y=240[vout]")
+        // Setup FFmpeg Progress Statistics Callback
+        FFmpegKitConfig.enableStatisticsCallback { stats ->
+            val currentFrame = stats.videoFrameNumber.coerceAtLeast(0)
+            val progressFraction = (currentFrame.toFloat() / totalFrames.toFloat()).coerceIn(0.0f, 1.0f)
+            val elapsedMs = (System.currentTimeMillis() - startTime).coerceAtLeast(1L)
 
-        val command = "${inputArguments}-filter_complex \"$filterComplex\" -map \"[vout]\" -map \"[aout]\" -c:v libx264 -preset ultrafast -r $fps -pix_fmt yuv420p \"${outputFile.absolutePath}\""
+            val currentFps = stats.videoFps.toFloat().coerceAtLeast(0f)
+            val speedRatio = stats.speed.toFloat().coerceAtLeast(0.1f)
+            val remainingMs = if (speedRatio > 0.05f) {
+                (((totalDurationMs - (stats.time.toLong())) / speedRatio)).toLong().coerceAtLeast(0L)
+            } else 0L
+
+            val estimatedSizeMb = (stats.size.toFloat() / (1024f * 1024f)).coerceAtLeast(0.1f)
+
+            onProgress(
+                ExportProgress(
+                    progress = progressFraction,
+                    currentFrame = currentFrame,
+                    totalFrames = totalFrames,
+                    currentFps = currentFps,
+                    encodingSpeed = speedRatio,
+                    elapsedTimeMs = elapsedMs,
+                    remainingTimeMs = remainingMs,
+                    estimatedFileSizeMb = estimatedSizeMb,
+                    statusText = "Rendering frame $currentFrame / $totalFrames (${(progressFraction * 100).toInt()}%)"
+                )
+            )
+        }
 
         val session = FFmpegKit.execute(command)
+
+        // Cleanup temporary overlay PNG files
+        try {
+            overlayDir.deleteRecursively()
+        } catch (_: Exception) {}
 
         val success = ReturnCode.isSuccess(session.returnCode)
         if (success) {
             notifyMediaScanner(context, outputFile)
+            onProgress(
+                ExportProgress(
+                    progress = 1.0f,
+                    currentFrame = totalFrames,
+                    totalFrames = totalFrames,
+                    statusText = "Export Completed Successfully!"
+                )
+            )
         }
 
         return@withContext success
@@ -83,4 +165,3 @@ object VideoExporter {
         return text.replace("'", "\\'").replace(":", "\\:")
     }
 }
-

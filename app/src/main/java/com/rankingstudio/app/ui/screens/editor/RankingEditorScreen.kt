@@ -46,6 +46,9 @@ import com.rankingstudio.app.ui.components.PapercraftButton
 import com.rankingstudio.app.ui.components.PapercraftCard
 import com.rankingstudio.app.ui.screens.importdialog.TikTokImportDialog
 import com.rankingstudio.app.ui.theme.*
+import com.rankingstudio.app.ui.screens.editor.timeline.NleTimelineEngine
+import com.rankingstudio.app.ui.screens.export.ExportScreen
+import com.rankingstudio.app.ui.screens.export.ExportViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,6 +69,8 @@ fun RankingEditorScreen(
     val project by viewModel.project.collectAsState()
     val activeRankIndex by viewModel.activeRankIndex.collectAsState()
 
+    val exportViewModel: ExportViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    var showExportScreen by remember { mutableStateOf(false) }
     var showAddClipOptionsDialog by remember { mutableStateOf(false) }
     var showTikTokImportDialog by remember { mutableStateOf(false) }
     var showHeaderEditSheet by remember { mutableStateOf(false) }
@@ -164,39 +169,8 @@ fun RankingEditorScreen(
                     IconButton(onClick = { showAddClipOptionsDialog = true }) {
                         Icon(imageVector = Icons.Default.Add, contentDescription = "Add Clip", tint = PrimarySandishBrown)
                     }
-                    IconButton(onClick = {
-                        val currentProj = project
-                        if (currentProj == null || currentProj.clips.isEmpty()) {
-                            exportErrorMessage = "Please add at least 1 video clip before exporting."
-                            showExportDialog = true
-                            isExporting = false
-                            exportSuccess = false
-                        } else {
-                            showExportDialog = true
-                            isExporting = true
-                            exportSuccess = false
-                            exportErrorMessage = null
-
-                            scope.launch {
-                                val outFile = VideoExporter.getExportOutputFile(context)
-                                val success = VideoExporter.exportProjectVideo(
-                                    context = context,
-                                    project = currentProj,
-                                    fps = 30,
-                                    outputFile = outFile,
-                                    onProgress = {}
-                                )
-                                isExporting = false
-                                if (success) {
-                                    exportSuccess = true
-                                    exportedFilePath = outFile.absolutePath
-                                } else {
-                                    exportErrorMessage = "FFmpeg export failed to render MP4 video."
-                                }
-                            }
-                        }
-                    }) {
-                        Icon(imageVector = Icons.Default.FileDownload, contentDescription = "Export Video", tint = Terracotta)
+                    IconButton(onClick = { showExportScreen = true }) {
+                        Icon(imageVector = Icons.Default.IosShare, contentDescription = "Export Video", tint = Terracotta)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfacePaper)
@@ -321,50 +295,39 @@ fun RankingEditorScreen(
                 }
             }
 
-            // Bottom Timeline Toolbar & Clip List (1-7 clips)
-            PapercraftCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                backgroundColor = PaperWhite
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Timeline (${project?.clips?.size ?: 0}/7 clips)",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = InkCharcoal
-                    )
-
-                    Row {
-                        IconButton(onClick = { showTikTokImportDialog = true }) {
-                            Icon(imageVector = Icons.Default.CloudDownload, contentDescription = "TikTok Import", tint = Terracotta)
-                        }
-                        IconButton(onClick = { showAddClipOptionsDialog = true }) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Clip", tint = PrimarySandishBrown)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+            // Professional Non-Linear Editing (NLE) Timeline Engine (CapCut / VN / Meta Edits style)
+            project?.let { currentProject ->
+                NleTimelineEngine(
+                    project = currentProject,
+                    currentPlaybackTimeMs = viewModel.currentPlaybackTimeMs.collectAsState().value,
+                    isPlaying = exoPlayer.isPlaying,
+                    onSeekToTime = { timeMs ->
+                        exoPlayer.seekTo(timeMs)
+                        viewModel.updatePlaybackProgress(timeMs)
+                    },
+                    onSelectClip = { clip ->
+                        viewModel.setSelectedClip(clip)
+                    },
+                    onUpdateClipTrim = { clipId, startMs, endMs ->
+                        viewModel.updateClipTrim(clipId, startMs, endMs)
+                    },
+                    onSplitClip = { clipId, splitTimeMs ->
+                        viewModel.splitClipAtPlayhead(clipId, splitTimeMs)
+                    },
+                    onDeleteClip = { clipId ->
+                        viewModel.removeClip(clipId)
+                    },
+                    onDuplicateClip = { clipId ->
+                        viewModel.duplicateClip(clipId)
+                    },
+                    onAddAudioTrack = {
+                        viewModel.addAudioTrack("Background Music", "android.resource://${context.packageName}/raw/sample_audio", 15000L)
+                    },
+                    onAddTextTrack = {
+                        viewModel.addTextTrack("Rank Overlay", 5000L)
+                    },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    itemsIndexed(project?.clips ?: emptyList()) { index, clip ->
-                        TimelineClipCard(
-                            clip = clip,
-                            rankIndex = index + 1,
-                            isActiveRank = (index + 1) == activeRankIndex,
-                            onClick = { selectedClipForTrim = clip },
-                            onDelete = { viewModel.removeClip(clip.id) }
-                        )
-                    }
-                }
+                )
             }
         }
     }
@@ -472,6 +435,15 @@ fun RankingEditorScreen(
             onVideoDownloaded = { videoUrl ->
                 viewModel.addClipToTimeline(videoUrl)
             }
+        )
+    }
+
+    // Frame-Accurate Export Screen Overlay
+    if (showExportScreen && project != null) {
+        ExportScreen(
+            project = project!!,
+            viewModel = exportViewModel,
+            onNavigateBack = { showExportScreen = false }
         )
     }
 

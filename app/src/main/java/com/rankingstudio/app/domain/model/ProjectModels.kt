@@ -10,6 +10,8 @@ data class RankingProject(
     val progressBarConfig: ProgressBarConfig = ProgressBarConfig(),
     val watermarkConfig: WatermarkConfig = WatermarkConfig(),
     val clips: List<VideoClip> = emptyList(),
+    val audioTracks: List<AudioTrackItem> = emptyList(),
+    val textTracks: List<TextTrackItem> = emptyList(),
     val rankingItems: List<RankingSidebarItem> = defaultRankingItems()
 )
 
@@ -21,7 +23,34 @@ data class VideoClip(
     val durationMs: Long,
     val trimStartMs: Long = 0,
     val trimEndMs: Long = durationMs,
-    val thumbnailUri: String? = null
+    val thumbnailUri: String? = null,
+    val volume: Float = 1.0f,
+    val speed: Float = 1.0f,
+    val transitionType: String = "NONE" // NONE, FADE, DISSOLVE, SLIDE
+)
+
+data class AudioTrackItem(
+    val id: String,
+    val title: String,
+    val artist: String = "",
+    val audioUri: String,
+    val startOffsetMs: Long,
+    val durationMs: Long,
+    val trimStartMs: Long = 0,
+    val trimEndMs: Long = durationMs,
+    val volume: Float = 1.0f,
+    val isMuted: Boolean = false
+)
+
+data class TextTrackItem(
+    val id: String,
+    val text: String,
+    val startOffsetMs: Long,
+    val durationMs: Long,
+    val fontColorHex: String = "#FFFFFF",
+    val backgroundColorHex: String = "#8E44AD", // CapCut Purple
+    val fontSizeSp: Float = 14f,
+    val animation: String = "POP" // NONE, FADE, POP, BOUNCE
 )
 
 data class RankingSidebarItem(

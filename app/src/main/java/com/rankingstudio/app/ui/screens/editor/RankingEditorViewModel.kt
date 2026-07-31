@@ -132,6 +132,115 @@ class RankingEditorViewModel @Inject constructor(
         saveCurrentProject()
     }
 
+    fun splitClipAtPlayhead(clipId: String, playheadMs: Long) {
+        val current = _project.value ?: return
+        val targetClip = current.clips.find { it.id == clipId } ?: return
+
+        // Calculate clip's relative start time in project timeline
+        var accumulatedTimeMs = 0L
+        for (clip in current.clips) {
+            val clipDuration = (clip.trimEndMs - clip.trimStartMs).coerceAtLeast(1000L)
+            if (clip.id == clipId) {
+                val relativeSplitOffsetMs = playheadMs - accumulatedTimeMs
+                // Ensure split is not at the extreme edges
+                if (relativeSplitOffsetMs > 300L && relativeSplitOffsetMs < (clipDuration - 300L)) {
+                    pushUndoState(current)
+
+                    val splitPointInSource = clip.trimStartMs + relativeSplitOffsetMs
+
+                    val clip1 = clip.copy(
+                        trimEndMs = splitPointInSource
+                    )
+                    val clip2 = clip.copy(
+                        id = UUID.randomUUID().toString(),
+                        trimStartMs = splitPointInSource,
+                        trimEndMs = clip.trimEndMs
+                    )
+
+                    val newClipsList = mutableListOf<VideoClip>()
+                    for (c in current.clips) {
+                        if (c.id == clipId) {
+                            newClipsList.add(clip1)
+                            newClipsList.add(clip2)
+                        } else {
+                            newClipsList.add(c)
+                        }
+                    }
+
+                    val reindexedClips = newClipsList.take(7).mapIndexed { index, item ->
+                        item.copy(orderIndex = index)
+                    }
+
+                    val updatedProject = current.copy(clips = reindexedClips, updatedAt = System.currentTimeMillis())
+                    _project.value = updatedProject
+                    saveCurrentProject()
+                }
+                break
+            }
+            accumulatedTimeMs += clipDuration
+        }
+    }
+
+    fun duplicateClip(clipId: String) {
+        val current = _project.value ?: return
+        if (current.clips.size >= 7) return
+        val targetClip = current.clips.find { it.id == clipId } ?: return
+
+        pushUndoState(current)
+        val duplicated = targetClip.copy(id = UUID.randomUUID().toString())
+        val newList = current.clips.toMutableList()
+        val index = newList.indexOfFirst { it.id == clipId }
+        if (index != -1) {
+            newList.add(index + 1, duplicated)
+        } else {
+            newList.add(duplicated)
+        }
+
+        val reindexed = newList.take(7).mapIndexed { i, c -> c.copy(orderIndex = i) }
+        val updated = current.copy(clips = reindexed, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun addAudioTrack(title: String = "Background Music", audioUri: String, durationMs: Long = 15000L) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val newAudio = AudioTrackItem(
+            id = UUID.randomUUID().toString(),
+            title = title,
+            audioUri = audioUri,
+            startOffsetMs = 0L,
+            durationMs = durationMs
+        )
+        val updated = current.copy(
+            audioTracks = current.audioTracks + newAudio,
+            updatedAt = System.currentTimeMillis()
+        )
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun addTextTrack(text: String = "Ranking Title", durationMs: Long = 5000L) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val newText = TextTrackItem(
+            id = UUID.randomUUID().toString(),
+            text = text,
+            startOffsetMs = 0L,
+            durationMs = durationMs
+        )
+        val updated = current.copy(
+            textTracks = current.textTracks + newText,
+            updatedAt = System.currentTimeMillis()
+        )
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun setSelectedClip(clip: VideoClip?) {
+        _selectedClip.value = clip
+    }
+
     fun updateHeaderConfig(config: HeaderConfig) {
         val current = _project.value ?: return
         pushUndoState(current)
