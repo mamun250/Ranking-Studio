@@ -318,40 +318,53 @@ fun NleTimelineEngine(
 
             Divider(color = Color(0xFF2D2D35), thickness = 1.dp)
 
-            // --- CAPCUT / VN / META EDITS STYLE ACTION TOOLBAR ---
+            // --- WIREFRAME COMPLIANT ACTION TOOLBAR ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1B1B20))
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .background(Color(0xFF18181C))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Split Action
+                // 1. Trim
                 ActionButton(
                     icon = Icons.Default.ContentCut,
-                    label = "Split",
+                    label = "Trim",
                     enabled = activeClip != null,
                     onClick = {
                         activeClip?.let { clip ->
-                            onSplitClip(clip.id, currentPlaybackTimeMs)
+                            onUpdateClipTrim(clip.id, clip.trimStartMs, clip.trimEndMs)
                             view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                         }
                     }
                 )
 
-                // Duplicate Action
+                // 2. Volume
                 ActionButton(
-                    icon = Icons.Default.ContentCopy,
-                    label = "Duplicate",
+                    icon = Icons.Default.VolumeUp,
+                    label = "Volume",
                     enabled = activeClip != null,
                     onClick = {
-                        activeClip?.let { onDuplicateClip(it.id) }
+                        activeClip?.let {
+                            onSelectClip(it)
+                        }
                     }
                 )
 
-                // Delete Action
+                // 3. Replace
+                ActionButton(
+                    icon = Icons.Default.Sync,
+                    label = "Replace",
+                    enabled = activeClip != null,
+                    onClick = {
+                        activeClip?.let {
+                            onSelectClip(it)
+                        }
+                    }
+                )
+
+                // 4. Delete
                 ActionButton(
                     icon = Icons.Default.Delete,
                     label = "Delete",
@@ -365,20 +378,12 @@ fun NleTimelineEngine(
                     }
                 )
 
-                // Add Text Track
+                // 5. Add Text (Optional)
                 ActionButton(
                     icon = Icons.Default.Title,
-                    label = "+ Text",
-                    color = Color(0xFF9B51E0),
+                    label = "Add Text",
+                    color = Color(0xFFFFD600),
                     onClick = onAddTextTrack
-                )
-
-                // Add Audio Track
-                ActionButton(
-                    icon = Icons.Default.MusicNote,
-                    label = "+ Audio",
-                    color = Color(0xFFE91E63),
-                    onClick = onAddAudioTrack
                 )
             }
         }

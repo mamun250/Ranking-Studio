@@ -254,12 +254,12 @@ fun RankingEditorScreen(
                         }
                     }
 
-                    // 2. Ranking Sidebar Overlay (Left Side)
+                    // 2. Ranking Sidebar Overlay (Left Side inside video)
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .padding(start = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(project?.rankingStyleConfig?.spacingDp?.dp ?: 6.dp)
                     ) {
                         currentProject.rankingItems.forEach { item ->
                             val isActive = item.rankIndex == activeRankIndex
@@ -269,43 +269,43 @@ fun RankingEditorScreen(
                                 label = "scale"
                             )
 
-                            val itemBgColor = parseHexColor(item.backgroundColorHex, PaperWhite.copy(alpha = 0.9f))
-                            val itemTextColor = parseHexColor(item.fontColorHex, InkCharcoal)
+                            val yellowColor = Color(0xFFFFD600)
+                            val itemTextColor = if (isActive) yellowColor else Color.White
 
                             Row(
                                 modifier = Modifier
                                     .scale(scaleAnim)
                                     .background(
-                                        color = if (isActive) SecondaryContainer else itemBgColor,
+                                        color = if (isActive) Color.Black.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.45f),
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .border(
                                         width = if (isActive) 2.dp else 1.dp,
-                                        color = if (isActive) SecondaryOliveGreen else OutlineBrown,
+                                        color = if (isActive) yellowColor else Color.White.copy(alpha = 0.3f),
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .clickable {
                                         editingRankIndex = item.rankIndex
                                         showSidebarEditSheet = true
                                     }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "#${item.rankIndex}",
+                                    text = "${item.rankIndex}.",
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isActive) SecondaryOliveGreen else itemTextColor,
-                                    fontSize = 14.sp
+                                    color = itemTextColor,
+                                    fontSize = 15.sp
                                 )
-                                Text(text = item.emoji, fontSize = 14.sp)
                                 Text(
                                     text = item.title,
-                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                                    fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium,
                                     color = itemTextColor,
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                     maxLines = 1
                                 )
+                                Text(text = item.emoji, fontSize = 15.sp)
                             }
                         }
                     }

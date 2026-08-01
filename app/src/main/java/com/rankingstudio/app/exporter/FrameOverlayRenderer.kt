@@ -76,25 +76,10 @@ object FrameOverlayRenderer {
             val isActive = item.rankIndex == activeRankIndex
             val y = startY + index * (itemHeight + itemSpacing)
 
-            val itemBgColor = if (isActive) {
-                try { Color.parseColor(project.rankingStyleConfig.highlightColorHex) } catch (_: Exception) { Color.parseColor("#FFEB3B") }
-            } else {
-                try { Color.parseColor(item.backgroundColorHex) } catch (_: Exception) { Color.parseColor("#1A1A1A") }
-            }
+            val itemBgColor = Color.argb(if (isActive) 190 else 115, 0, 0, 0)
+            val itemBorderColor = if (isActive) Color.parseColor("#FFD600") else Color.argb(80, 255, 255, 255)
+            val itemTextColor = if (isActive) Color.parseColor("#FFD600") else Color.WHITE
 
-            val itemBorderColor = if (isActive) {
-                Color.parseColor("#FFFFFF")
-            } else {
-                try { Color.parseColor(item.strokeColorHex) } catch (_: Exception) { Color.parseColor("#333333") }
-            }
-
-            val itemTextColor = if (isActive) {
-                Color.BLACK
-            } else {
-                try { Color.parseColor(item.fontColorHex) } catch (_: Exception) { Color.WHITE }
-            }
-
-            // Active rank bounce scale offset
             val scale = if (isActive) 1.10f else 1.0f
             val scaledWidth = itemWidth * scale
             val scaledHeight = itemHeight * scale
@@ -107,15 +92,16 @@ object FrameOverlayRenderer {
 
             // Draw Border
             strokePaint.color = itemBorderColor
-            strokePaint.strokeWidth = if (isActive) 6f else 2f
+            strokePaint.strokeWidth = if (isActive) 5f else 2f
             canvas.drawRoundRect(rect, 16f, 16f, strokePaint)
 
-            // Draw Item Text (#Rank Emoji Title)
+            // Draw Item Text (1. Title Emoji)
             textPaint.textAlign = Paint.Align.LEFT
             textPaint.color = itemTextColor
             textPaint.textSize = scaledHeight * 0.45f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, if (isActive) Typeface.BOLD else Typeface.NORMAL)
 
-            val labelText = "#${item.rankIndex} ${item.emoji} ${item.title}"
+            val labelText = "${item.rankIndex}. ${item.title} ${item.emoji}"
             canvas.drawText(labelText, startX + 16f, y + scaledHeight * 0.65f, textPaint)
         }
 
