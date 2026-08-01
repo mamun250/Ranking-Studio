@@ -249,6 +249,67 @@ class RankingEditorViewModel @Inject constructor(
         saveCurrentProject()
     }
 
+    fun updateRankingStyleConfig(config: RankingStyleConfig) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updated = current.copy(rankingStyleConfig = config, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun updateTextOverlayConfig(config: TextOverlayConfig) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updated = current.copy(textOverlayConfig = config, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun updateCanvasConfig(config: CanvasConfig) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updated = current.copy(canvasConfig = config, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun updateExportConfig(config: ExportConfig) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updated = current.copy(exportConfig = config, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun updateClipVolume(clipId: String, volume: Float) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updatedClips = current.clips.map { clip ->
+            if (clip.id == clipId) clip.copy(volume = volume.coerceIn(0f, 1f)) else clip
+        }
+        val updated = current.copy(clips = updatedClips, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
+    fun replaceClip(clipId: String, newVideoUri: String, newDurationMs: Long) {
+        val current = _project.value ?: return
+        pushUndoState(current)
+        val updatedClips = current.clips.map { clip ->
+            if (clip.id == clipId) {
+                clip.copy(
+                    videoUri = newVideoUri,
+                    durationMs = newDurationMs,
+                    trimStartMs = 0,
+                    trimEndMs = newDurationMs
+                )
+            } else clip
+        }
+        val updated = current.copy(clips = updatedClips, updatedAt = System.currentTimeMillis())
+        _project.value = updated
+        saveCurrentProject()
+    }
+
     fun updateRankingSidebarItem(rankIndex: Int, newTitle: String, newEmoji: String) {
         val current = _project.value ?: return
         pushUndoState(current)

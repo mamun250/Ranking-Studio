@@ -206,35 +206,52 @@ fun RankingEditorScreen(
 
                 // Compose Overlays: Header, Ranking Sidebar, Progress Bar, Watermark
                 project?.let { currentProject ->
+                    val header = currentProject.headerConfig
+                    val headerBg = parseHexColor(header.backgroundColorHex, Color.Black.copy(alpha = 0.8f))
+
                     // 1. Header Overlay
-                    Column(
+                    Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .padding(top = 16.dp)
-                            .clickable { showHeaderEditSheet = true },
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(top = 12.dp, start = 16.dp, end = 16.dp)
+                            .background(headerBg, shape = RoundedCornerShape(12.dp))
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .clickable { showHeaderEditSheet = true }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Text(
-                            text = currentProject.headerConfig.line1,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                        Column(
+                            horizontalAlignment = when (header.textAlign) {
+                                "LEFT" -> Alignment.Start
+                                "RIGHT" -> Alignment.End
+                                else -> Alignment.CenterHorizontally
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = header.line1,
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    color = parseHexColor(header.line1ColorHex, Color.White),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = (header.line1SizeSp * 0.5f).sp
+                                )
                             )
-                        )
-                        Text(
-                            text = currentProject.headerConfig.line2,
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                color = parseHexColor(currentProject.headerConfig.fontColorHex, Terracotta),
-                                fontWeight = FontWeight.ExtraBold
+                            Text(
+                                text = header.line2,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    color = parseHexColor(header.line2ColorHex, Terracotta),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = (header.line2SizeSp * 0.5f).sp
+                                )
                             )
-                        )
-                        Text(
-                            text = currentProject.headerConfig.line3,
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold
+                            Text(
+                                text = header.line3,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = parseHexColor(header.line3ColorHex, Color.White),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = (header.line3SizeSp * 0.5f).sp
+                                )
                             )
-                        )
+                        }
                     }
 
                     // 2. Ranking Sidebar Overlay (Left Side)
@@ -512,13 +529,20 @@ fun HeaderEditDialog(
     var line1 by remember { mutableStateOf(headerConfig.line1) }
     var line2 by remember { mutableStateOf(headerConfig.line2) }
     var line3 by remember { mutableStateOf(headerConfig.line3) }
-    var fontColorHex by remember { mutableStateOf(headerConfig.fontColorHex) }
+    var line1SizeSp by remember { mutableFloatStateOf(headerConfig.line1SizeSp) }
+    var line2SizeSp by remember { mutableFloatStateOf(headerConfig.line2SizeSp) }
+    var line3SizeSp by remember { mutableFloatStateOf(headerConfig.line3SizeSp) }
+    var line1ColorHex by remember { mutableStateOf(headerConfig.line1ColorHex) }
+    var line2ColorHex by remember { mutableStateOf(headerConfig.line2ColorHex) }
+    var line3ColorHex by remember { mutableStateOf(headerConfig.line3ColorHex) }
+    var backgroundColorHex by remember { mutableStateOf(headerConfig.backgroundColorHex) }
+    var textAlign by remember { mutableStateOf(headerConfig.textAlign) }
 
-    val colors = listOf("#C15C3D", "#F5A623", "#4A6B5D", "#2B7A78", "#2B2B2A", "#FFFFFF")
+    val colors = listOf("#FFFFFF", "#FFEB3B", "#FF5722", "#4CAF50", "#2196F3", "#9C27B0", "#000000")
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Customize Header Text & Colors", color = InkCharcoal) },
+        title = { Text("Header / Title Settings", color = InkCharcoal, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -529,35 +553,70 @@ fun HeaderEditDialog(
                 OutlinedTextField(
                     value = line1,
                     onValueChange = { line1 = it },
-                    label = { Text("Line 1 (Top)") },
+                    label = { Text("Text 1") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = line2,
                     onValueChange = { line2 = it },
-                    label = { Text("Line 2 (Highlight)") },
+                    label = { Text("Text 2 (Highlight)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = line3,
                     onValueChange = { line3 = it },
-                    label = { Text("Line 3 (Bottom)") },
+                    label = { Text("Text 3") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Line 2 Highlight Color:", style = MaterialTheme.typography.labelLarge, color = InkCharcoal)
+                Text("Text 1 Size: ${line1SizeSp.toInt()}", style = MaterialTheme.typography.labelLarge, color = InkCharcoal)
+                Slider(
+                    value = line1SizeSp,
+                    onValueChange = { line1SizeSp = it },
+                    valueRange = 24f..80f,
+                    colors = SliderDefaults.colors(thumbColor = Terracotta, activeTrackColor = Terracotta)
+                )
+
+                Text("Text 2 Size: ${line2SizeSp.toInt()}", style = MaterialTheme.typography.labelLarge, color = InkCharcoal)
+                Slider(
+                    value = line2SizeSp,
+                    onValueChange = { line2SizeSp = it },
+                    valueRange = 24f..90f,
+                    colors = SliderDefaults.colors(thumbColor = Terracotta, activeTrackColor = Terracotta)
+                )
+
+                Text("Text 3 Size: ${line3SizeSp.toInt()}", style = MaterialTheme.typography.labelLarge, color = InkCharcoal)
+                Slider(
+                    value = line3SizeSp,
+                    onValueChange = { line3SizeSp = it },
+                    valueRange = 20f..70f,
+                    colors = SliderDefaults.colors(thumbColor = Terracotta, activeTrackColor = Terracotta)
+                )
+
+                Text("Text 2 Color:", style = MaterialTheme.typography.labelLarge, color = InkCharcoal)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     colors.forEach { hex ->
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(28.dp)
                                 .background(parseHexColor(hex, Color.Gray), shape = CircleShape)
                                 .border(
-                                    width = if (fontColorHex == hex) 3.dp else 1.dp,
-                                    color = if (fontColorHex == hex) InkCharcoal else Color.LightGray,
+                                    width = if (line2ColorHex == hex) 3.dp else 1.dp,
+                                    color = if (line2ColorHex == hex) Terracotta else Color.LightGray,
                                     shape = CircleShape
                                 )
-                                .clickable { fontColorHex = hex }
+                                .clickable { line2ColorHex = hex }
+                        )
+                    }
+                }
+
+                Text("Text Alignment:", style = MaterialTheme.typography.labelLarge, color = InkCharcoal)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("LEFT" to "Left", "CENTER" to "Center", "RIGHT" to "Right").forEach { (key, label) ->
+                        FilterChip(
+                            selected = textAlign == key,
+                            onClick = { textAlign = key },
+                            label = { Text(label) }
                         )
                     }
                 }
@@ -565,7 +624,23 @@ fun HeaderEditDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(HeaderConfig(line1, line2, line3, fontColorHex)) },
+                onClick = {
+                    onSave(
+                        HeaderConfig(
+                            line1 = line1,
+                            line2 = line2,
+                            line3 = line3,
+                            line1SizeSp = line1SizeSp,
+                            line2SizeSp = line2SizeSp,
+                            line3SizeSp = line3SizeSp,
+                            line1ColorHex = line1ColorHex,
+                            line2ColorHex = line2ColorHex,
+                            line3ColorHex = line3ColorHex,
+                            backgroundColorHex = backgroundColorHex,
+                            textAlign = textAlign
+                        )
+                    )
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimarySandishBrown)
             ) {
                 Text("Save Changes")
