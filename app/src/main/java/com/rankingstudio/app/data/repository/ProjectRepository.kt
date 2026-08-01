@@ -103,8 +103,8 @@ class ProjectRepository @Inject constructor(
                 line1 = entity.headerLine1,
                 line2 = entity.headerLine2,
                 line3 = entity.headerLine3,
-                fontColorHex = entity.headerColorHex,
-                fontSizeSp = entity.headerFontSizeSp
+                line2ColorHex = entity.headerColorHex,
+                line2SizeSp = entity.headerFontSizeSp
             ),
             progressBarConfig = ProgressBarConfig(
                 enabled = entity.progressBarEnabled,
@@ -132,8 +132,8 @@ class ProjectRepository @Inject constructor(
             headerLine1 = project.headerConfig.line1,
             headerLine2 = project.headerConfig.line2,
             headerLine3 = project.headerConfig.line3,
-            headerColorHex = project.headerConfig.fontColorHex,
-            headerFontSizeSp = project.headerConfig.fontSizeSp,
+            headerColorHex = project.headerConfig.line2ColorHex,
+            headerFontSizeSp = project.headerConfig.line2SizeSp,
             progressBarEnabled = project.progressBarConfig.enabled,
             progressBarColorHex = project.progressBarConfig.colorHex,
             progressBarThicknessDp = project.progressBarConfig.thicknessDp,
